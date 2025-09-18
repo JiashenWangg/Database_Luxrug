@@ -1,35 +1,65 @@
 # Amazon Store Database Design & Deployment
 
-This project implements a relational database system to centralize and manage data for an Amazon rug store. The database integrates sales, returns, and customer reviews, ensuring streamlined access for analysis, reporting, and visualization.
+This project implements a full pipeline for managing, cleaning, analyzing, and visualizing data for an Amazon rug store. It integrates sales, returns, and customer reviews into a relational database, applies structured preprocessing, and produces business insights through statistical analysis and visualizations.
 
+## Project Workflow
 
-## Project Overview
+**1. Database Initialization – db_init.qmd**
 
-Database Design: Created normalized schemas to support sales, returns, and review records with referential integrity.
+	Designs and deploys normalized relational schemas for sales, returns, and reviews.
 
-Initialization Script (db_init.qmd):
+	Loads historical raw datasets into the database.
 
-  Defines table structures and relationships.
+	Cleans and formats data types (dates, currencies, categorical values) to ensure integrity.
 
-  Loads raw datasets into the database.
+**2. Daily Updates – db_daily_update.qmd**
 
-  Performs initial data cleaning and transformation.
+	Automates ingestion of new sales, returns, and reviews data.
 
-Daily Update Script (db_daily_update.qmd):
+	Deduplicates records and appends updates without overwriting historical data.
 
-  Automates ingestion of new sales, return, and review data.
+	Keeps the database synchronized with Amazon Seller Central exports.
 
-  Updates tables incrementally without disrupting historical records.
+**3. Data Preprocessing – data_prep.qmd**
 
-  Applies preprocessing steps (deduplication, type casting, date formatting).
-  
+	Consolidates sales, returns, and review data into unified, analysis-ready tables.
 
-## Key Features
+	Applies transformations such as:
 
-Centralized Data Access: All Amazon store data stored in a single relational database.
+		Standardizing product identifiers (SKU, pattern, size).
 
-Automated Pipelines: Daily update workflow ensures database stays fresh with minimal manual effort.
+		Generating derived metrics (return rates, review scores, revenue per listing).
 
-Analytics Ready: Data structures are optimized for queries, supporting business dashboards (R Shiny) and further statistical modeling.
+		Handling missing values and outliers.
 
-Scalable: Designed to handle growing datasets as product lines and transactions expand.
+		Outputs cleaned datasets used for statistical modeling and visualization.
+
+**4. Data Analysis – data_analysis.qmd**
+
+	Performs exploratory and statistical analysis on cleaned data.
+
+	Investigates:
+
+		Revenue trends by time, product pattern, and size.
+
+		Return rate distributions and their drivers.
+
+		Customer review sentiment and average star ratings.
+
+		Uses regression and time-series techniques to identify patterns and causal relationships.
+
+**5. Visualization & Insights**
+
+	Built interactive R Shiny dashboards connected to the processed database.
+
+	Key visualizations include:
+
+		Time series plots of revenue, returns, and review counts.
+
+		Faceted bar plots comparing product categories and sizes.
+
+		Geographic maps of customer demand and return rates.
+
+		Correlation plots linking reviews, returns, and sales performance.
+
+	These visualizations support product strategy (pattern/size prioritization), ad targeting, and return mitigation.

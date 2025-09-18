@@ -1,0 +1,85 @@
+---
+title: "Daily DB Update for Luxrug DB"
+subtitle: ""
+format: 
+  html:
+    self-contained: true
+author:
+- Jiashen Wang
+---
+```{r, echo=FALSE}
+# setup
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+```
+
+```{r, echo=FALSE}
+# load orders data in DB
+orders <- read.csv("data/orders.csv")
+
+# load and process new data
+orders_update <- read.delim("daily_update/orders_update.txt")
+# only retain Amazon orders that are not cancelled and in the US
+orders_update = orders_update[orders_update$order.status != "Cancelled" & 
+                  orders_update$sales.channel == "Amazon.com",]
+orders_cols = c("amazon.order.id", "purchase.date", "order.status", 
+                "asin", "quantity", "item.price", "item.promotion.discount", 
+                "ship.city", "ship.state", "ship.postal.code")
+orders_update = orders_update[,orders_cols]
+colnames(orders_update) = c("order_id", "date", "status", "asin", "quantity", 
+                  "price", "discount", "city", "state", "zip")
+
+# format date
+orders_update <- orders_update |>
+  mutate(date = as.POSIXct(date, format="%Y-%m-%dT%H:%M:%S", tz="UTC"))
+# only keey 5 digits of zip code
+orders_update$zip <- sub("(\\d{5}).*", "\\1", orders_update$zip)
+# change na's in discount to 0
+orders_update$discount[is.na(orders_update$discount)] <- 0
+```
+
+```{r}
+# Find the earliest date in orders_update
+earliest_update_date <- min(orders_update$date)
+# Filter original 'orders' to keep only rows with date before that
+orders_old <- orders[orders$date < earliest_update_date, ]
+# Combine with new orders
+orders_up2date <- rbind(orders_update, orders_old)
+
+orders_up2date
+write.csv(orders_up2date, "orders_updated.csv", row.names = FALSE)
+```
+
+
+```{r, echo=FALSE}
+# # returns
+# returns <- read.delim("raw/退货.txt")
+# returns_cols = c("return.date", "order.id","asin", "detailed.disposition", 
+#                 "reason", "customer.comments")
+# returns = returns[,returns_cols]
+# colnames(returns) = c("date", "order_id", "asin", "disposition", 
+#                   "reason", "comments")
+# 
+# # format date
+# returns <- returns |>
+#   mutate(date = as.POSIXct(date, format="%Y-%m-%dT%H:%M:%S", tz="UTC"))
+# 
+# returns
+# write.csv(returns, "returns.csv", row.names = FALSE)
+```
+
+
+```{r, echo=FALSE}
+# # reviews
+# reviews <- read.csv("reviews.csv", header = T)
+# 
+# # remove empty rows
+# reviews <- reviews[!is.na(reviews$rating), ]
+# # format date
+# reviews$date <- as.Date(reviews$date, format = "%m-%d-%Y")
+# 
+# reviews
+# write.csv(reviews, "reviews.csv", row.names = FALSE)
+```

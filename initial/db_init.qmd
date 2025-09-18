@@ -1,0 +1,107 @@
+---
+title: "Initial Data for Luxrug DB"
+subtitle: ""
+format: 
+  html:
+    self-contained: true
+author:
+- Jiashen Wang
+---
+```{r, echo=FALSE}
+# setup
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+```
+
+
+```{r, echo = F}
+# SKU
+sku = read.csv("sku_init.csv", header = T)
+sku_cols = c("产品名称", "公司SKU", "ASIN")
+sku = sku[2:nrow(sku),sku_cols]
+colnames(sku) = c("name", "sku", "asin")
+
+# extract name of pattern
+sku <- sku %>%
+  mutate(name = sub("(\\D+).*", "\\1", name))
+
+# extract pattern, size, color
+sku <- sku |>
+  mutate(size = regmatches(sku, regexpr("[0-9]x[0-9]+", sku)),
+         pattern = regmatches(sku, regexpr("[A-Z]\\d+", sku)),
+         color = regmatches(sku, regexpr("[A-Z][a-z]+ ?[A-Z]?[a-z]+", sku)))
+
+sku
+write.csv(sku, "sku.csv", row.names = FALSE)
+```
+
+
+```{r, echo=FALSE}
+# orders
+orders_2410 <- read.delim("orders_data/order_202410.txt")
+orders_2411 <- read.delim("orders_data/order_202411.txt")
+orders_2412 <- read.delim("orders_data/order_202412.txt")
+orders_2501 <- read.delim("orders_data/order_202501.txt")
+orders_2502 <- read.delim("orders_data/order_202502.txt")
+orders_2503 <- read.delim("orders_data/order_202503.txt")
+orders_init <- rbind(orders_2503, orders_2502, orders_2501, 
+                      orders_2412, orders_2411, orders_2410)
+
+# only retain Amazon orders that are not cancelled and in the US
+orders_init = orders_init[orders_init$order.status != "Cancelled" & 
+                  orders_init$sales.channel == "Amazon.com",]
+
+orders_init_cols = c("amazon.order.id", "purchase.date", "order.status", 
+                "asin", "quantity", "item.price", "item.promotion.discount", 
+                "ship.city", "ship.state", "ship.postal.code")
+orders_init = orders_init[,orders_init_cols]
+colnames(orders_init) = c("order_id", "date", "status", "asin", "quantity", 
+                  "price", "discount", "city", "state", "zip")
+
+# format date
+orders_init <- orders_init |>
+  mutate(date = as.POSIXct(date, format="%Y-%m-%dT%H:%M:%S", tz="UTC"))
+# only keey 5 digits of zip code
+orders_init$zip <- sub("(\\d{5}).*", "\\1", orders_init$zip)
+# change na's in discount to 0
+orders_init$discount[is.na(orders_init$discount)] <- 0
+
+orders_init
+write.csv(orders_init, "orders.csv", row.names = FALSE)
+```
+
+```{r, echo=FALSE}
+# returns
+returns_init <- read.delim("returns_init.txt")
+returns_init_cols = c("return.date", "order.id","asin", "detailed.disposition", 
+                "reason", "customer.comments")
+returns_init = returns_init[,returns_init_cols]
+colnames(returns_init) = c("date", "order_id", "asin", "disposition", 
+                  "reason", "comments")
+
+# format date
+returns_init <- returns_init |>
+  mutate(date = as.POSIXct(date, format="%Y-%m-%dT%H:%M:%S", tz="UTC"))
+
+returns_init
+write.csv(returns_init, "returns.csv", row.names = FALSE)
+```
+
+```{r, echo=FALSE}
+# stock
+stock_init <- read.csv("stock_init.csv", skip = 3, header = T)
+stock_cols = c("SKU", "ASIN", "Inbound.to.AWD..units.", "Available.in.AWD..units.", 
+                "Reserved.in.AWD..units.", "Outbound.to.FBA..units.", 
+               "Available.in.FBA..units.", "Available.in.FBA..days.", 
+               "Reserved.in.FBA..units.")
+stock_init = stock_init[,stock_cols]
+colnames(stock_init) = c("sku", "asin", "inb2AWD", "avai_AWD", 
+                         "res_AWD", "outb2FBA", "avai_FBA", 
+                         "avai_FBA_days", "res_FBA")
+
+stock_init
+write.csv(stock_init, "stock.csv", row.names = FALSE)
+```
+

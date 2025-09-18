@@ -1,0 +1,123 @@
+---
+title: "Data Analysis & Plots for Luxrug Data"
+subtitle: ""
+format: 
+  html:
+    self-contained: true
+author:
+- Jiashen Wang
+---
+```{r, echo=FALSE}
+# setup
+library(knitr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(tm)
+library(wordcloud)
+```
+
+
+```{r, echo = F}
+# read data files
+sku = read.csv("sku.csv", header = T)
+orders = read.csv("orders.csv", header = T)
+returns = read.csv("returns.csv", header = T)
+sales = read.csv("sales.csv", header = T)
+reviews = read.csv("reviews.csv", header = T)
+```
+
+```{r}
+# returns plots
+# disposition
+ggplot(returns, aes(x=disposition)) +
+  geom_bar(fill="gray", color="black") +
+  labs(title="Returned Items Status", x="", y="Count")
+
+# reasons
+# combine delivery related issues
+delivery_issues = c("DAMAGED_BY_FC", "MISSED_ESTIMATED_DELIVERY", 
+                    "UNDELIVERABLE_REFUSED", "UNDELIVERABLE_UNKNOWN")
+returns$reason <- ifelse(returns$reason %in% delivery_issues, "DELIVERY_ISSUES", returns$reason)
+# order by increasing
+returns_inc <- returns %>%
+  mutate(reason = factor(reason, levels = names(sort(table(reason),
+                                                     decreasing = F))))
+# pie chart
+ggplot(returns_inc, aes(x="", fill=reason)) +
+  geom_bar(width = 1, stat = "count") + 
+  coord_polar(theta = "y") + 
+  labs(fill="Reason", title="Return Reasons Pie Chart") +
+  theme_void()
+# Create a ggplot horizontal bar plot ordered by count
+ggplot(returns_inc, aes(x = reason, fill = reason)) +
+  geom_bar(stat = "count") +
+  coord_flip() + 
+  labs(title = "Reasons for Return (30 days)", x = "", y = "") +
+  theme_minimal() +
+  theme(legend.position = "none") 
+```
+
+```{r}
+# Word cloud for all return comments
+# Convert text data to UTF-8
+returns$comments <- iconv(returns$comments, to = "UTF-8")
+# Create a text corpus
+returns_corpus <- Corpus(VectorSource(returns$comments))
+# Preprocess the corpus
+returns_corpus <- tm_map(returns_corpus, content_transformer(tolower))
+returns_corpus <- tm_map(returns_corpus, removePunctuation)
+returns_corpus <- tm_map(returns_corpus, removeNumbers)
+returns_corpus <- tm_map(returns_corpus, removeWords, stopwords("english"))
+# Further remove custom stop words if necessary
+returns_stopwords <- c("rug", "needed", "just", "doesnt", "item", "room", "space") 
+returns_corpus <- tm_map(returns_corpus, removeWords, returns_stopwords)
+
+# Create a Term-Document Matrix
+returns_tdm <- TermDocumentMatrix(returns_corpus)
+# Convert the matrix to a dataframe of terms and their frequencies
+returns_freqs <- sort(rowSums(as.matrix(returns_tdm)), decreasing = TRUE)
+df_returns_freqs <- data.frame(Word = names(returns_freqs), Frequency = returns_freqs)
+# Generate the word cloud
+wordcloud(words = df_returns_freqs$Word, freq = df_returns_freqs$Frequency, min.freq = 1,
+          max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
+
+```{r}
+# reviews plots
+# ratings
+ggplot(reviews, aes(x=rating)) +
+  geom_bar(fill="gray", color="black") +
+  labs(title="Review Ratings", x="", y="Count")
+```
+
+
+```{r}
+# Word cloud for all negative reviews (<4)
+neg_reviews <- reviews %>%
+  filter(rating < 4)
+# Convert text data to UTF-8
+neg_reviews$content <- iconv(neg_reviews$content, to = "UTF-8")
+# Create a text corpus
+reviews_corpus <- Corpus(VectorSource(neg_reviews$content))
+# Preprocess the corpus
+reviews_corpus <- tm_map(reviews_corpus, content_transformer(tolower))
+reviews_corpus <- tm_map(reviews_corpus, removePunctuation)
+reviews_corpus <- tm_map(reviews_corpus, removeNumbers)
+reviews_corpus <- tm_map(reviews_corpus, removeWords, stopwords("english"))
+# Further remove custom stop words if necessary
+reviews_stopwords <- c("rug", "needed", "just", "doesnt", "item", "room", "space") 
+reviews_corpus <- tm_map(reviews_corpus, removeWords, reviews_stopwords)
+
+# Create a Term-Document Matrix
+reviews_tdm <- TermDocumentMatrix(returns_corpus)
+# Convert the matrix to a dataframe of terms and their frequencies
+reviews_freqs <- sort(rowSums(as.matrix(reviews_tdm)), decreasing = TRUE)
+df_reviews_freqs <- data.frame(Word = names(reviews_freqs), Frequency = reviews_freqs)
+# Generate the word cloud
+wordcloud(words = df_reviews_freqs$Word, freq = df_reviews_freqs$Frequency, 
+          min.freq = 1, max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+```
